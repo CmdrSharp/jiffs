@@ -1,0 +1,61 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: example-application
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          argocd.argoproj.io/secret-type: cluster
+          env: management
+      values:
+        revision: 0.19.2
+  - clusters:
+      selector:
+        matchLabels:
+          argocd.argoproj.io/secret-type: cluster
+          env: development
+      values:
+        revision: 0.19.2
+  - clusters:
+      selector:
+        matchLabels:
+          argocd.argoproj.io/secret-type: cluster
+          env: production
+      values:
+        revision: 0.19.2
+  template:
+    metadata:
+      name: example-appliation-{{ index .metadata.labels "country" }}-{{ index .metadata.labels "envShort" }}
+    spec:
+      project: default
+      sources:
+        - repoURL: https://github.com/example.git
+          targetRevision: main
+          ref: values
+        - repoURL: https://charts.example-app.com
+          chart: example-application
+          targetRevision: '{{ .values.revision }}'
+          helm:
+            version: v3
+            passCredentials: false
+            ignoreMissingValueFiles: true
+            releaseName: example-application
+            valueFiles:
+              - $values/kapps/example-application/values.yaml
+              - $values/kapps/example-application/overlays/{{ .metadata.labels.env }}/values.override.yaml
+              - $values/kapps/example-application/overlays/{{ .metadata.labels.env }}/{{ .metadata.labels.country }}/values.override.yaml
+      destination:
+        server: "{{ .server }}"
+        namespace: example-application
+      syncPolicy:
+        syncOptions:
+        - PrunePropagationPolicy=foreground
+        - PruneLast=true
+        - CreateNamespace=true
+        - ServerSideApply=true

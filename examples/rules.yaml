@@ -1,0 +1,14 @@
+---
+
+rules:
+  # For any ApplicationSet
+  # Allow changes to the revision value only when the env label is set to development
+  # Any other changes will be rejected
+  - match:
+    - path: kind
+      value: ApplicationSet
+    allowedChanges:
+    - /spec/generators/*/clusters/values/revision
+    when:
+    - path: /spec/generators/*/clusters/selector/matchLabels/env
+      value: development
